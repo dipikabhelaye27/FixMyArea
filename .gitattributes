@@ -1,0 +1,13 @@
+# GitHub Linguist Configuration
+
+# Mark mock seed data and generated lockfiles so they don't skew repository statistics
+server/src/utils/seedData.js linguist-vendored
+*.lock linguist-generated
+*-lock.json linguist-generated
+package-lock.json linguist-generated
+
+# Ensure client markup and styling are accurately counted
+*.html linguist-detectable=true
+*.css linguist-detectable=true
+*.jsx linguist-detectable=true
+
