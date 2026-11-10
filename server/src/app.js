@@ -7,22 +7,26 @@ const connectDB = require('./config/db');
 const issueRoutes = require('./routes/issueRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const authRoutes = require('./routes/authRoutes');
+const errorHandler = require('./middleware/errorHandler');
+const requestLogger = require('./middleware/requestLogger');
 
 const app = express();
 
 // Connect to MongoDB Atlas (reuses existing connection in serverless / Vercel)
 connectDB();
 
-// Middleware
+// Global Middleware
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(requestLogger);
 
-// Serve local upload fallbacks statically
+// Static Asset Serving
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/issues', express.static(path.join(__dirname, '../../client/public/issues')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -38,5 +42,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-module.exports = app;
+// Centralized Error Handler (Must be registered after routes)
+app.use(errorHandler);
 
+module.exports = app;

@@ -1,8 +1,8 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "FixMyArea Backend API",
+  "main": "src/app.js",
   "scripts": {
     "start": "node src/server.js",
     "seed": "node src/utils/seedData.js",

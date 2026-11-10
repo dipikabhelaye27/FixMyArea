@@ -8,25 +8,36 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Dependencies
-node_modules
-dist
-dist-ssr
+node_modules/
+dist/
+dist-ssr/
 *.local
 
-# Environment variables
+# Environment Variables
 .env
 .env.local
 .env.*.local
 !.env.example
 
-# Editor & OS files
+# Temporary Uploads
+server/uploads/*
+!server/uploads/.gitkeep
+
+# macOS & System Artifacts
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+Icon
+._*
+
+# IDE & Editor Configuration
+.idea/
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
+*.bak
