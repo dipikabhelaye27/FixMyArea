@@ -1,38 +1,40 @@
 const mongoose = require('mongoose');
 
+const DEFAULT_ATLAS_URI = 'mongodb+srv://bhelayedipika_db_user:98KzIyUNFmHsbpgj@fixmyareacluster.dkb6rf2.mongodb.net/fixmyarea?retryWrites=true&w=majority';
+
+// Global connection cache across serverless function invocations
+let cached = global.mongoose;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
-  // Reuse existing connection in serverless environments (Vercel)
-  if (mongoose.connection && mongoose.connection.readyState >= 1) {
-    return mongoose.connection;
+  // If already connected, return connection immediately
+  if (cached.conn && mongoose.connection.readyState === 1) {
+    return cached.conn;
   }
 
-  const atlasUri = process.env.MONGO_URI;
-  const localUri = 'mongodb://127.0.0.1:27017/fixmyarea';
+  if (!cached.promise) {
+    const uri = process.env.MONGO_URI || DEFAULT_ATLAS_URI;
+    const opts = {
+      bufferCommands: false, // Prevent buffering timeout; ensure explicit await
+      serverSelectionTimeoutMS: 8000,
+      connectTimeoutMS: 10000,
+      family: 4 // Prefer IPv4 to avoid serverless DNS latency
+    };
 
-  if (atlasUri) {
-    try {
-      console.log('Attempting MongoDB Atlas connection...');
-      const conn = await mongoose.connect(atlasUri, {
-        serverSelectionTimeoutMS: 4000,
-      });
-      console.log(`✅ MongoDB Atlas Connected: ${conn.connection.host}`);
-      return conn;
-    } catch (atlasError) {
-      console.warn(`⚠️ Atlas connection failed (${atlasError.message}).`);
-      console.log('🔄 Failing over to local MongoDB (127.0.0.1:27017/fixmyarea)...');
-    }
-  }
-
-  try {
-    const conn = await mongoose.connect(localUri, {
-      serverSelectionTimeoutMS: 5000,
+    cached.promise = mongoose.connect(uri, opts).then((m) => {
+      console.log(`✅ MongoDB Atlas Connected: ${m.connection.host}`);
+      return m;
+    }).catch((err) => {
+      cached.promise = null;
+      console.error('❌ MongoDB connection error:', err.message);
+      throw err;
     });
-    console.log(`✅ Local MongoDB Connected: 127.0.0.1:27017/fixmyarea (Failover Active)`);
-    return conn;
-  } catch (localError) {
-    console.error(`❌ Both Atlas and Local MongoDB connections failed: ${localError.message}`);
-    // Don't crash process so APIs can return proper error messages rather than dead server
   }
+
+  cached.conn = await cached.promise;
+  return cached.conn;
 };
 
 module.exports = connectDB;

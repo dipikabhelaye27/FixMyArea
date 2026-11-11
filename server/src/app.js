@@ -24,6 +24,24 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
+// Database Connection Middleware:
+// Guarantees MongoDB connection is active BEFORE any API query runs in serverless
+app.use(async (req, res, next) => {
+  if (req.path.startsWith('/uploads') || req.path.startsWith('/issues') || req.path === '/api/health') {
+    return next();
+  }
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('[DB Middleware] Connection failed:', err.message);
+    res.status(503).json({
+      success: false,
+      message: 'Database connection failed. Please check MongoDB Atlas connection.'
+    });
+  }
+});
+
 // Static Asset Serving
 const { uploadDir } = require('./config/cloudinary');
 if (uploadDir) {
