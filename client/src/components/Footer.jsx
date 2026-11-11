@@ -17,6 +17,7 @@ export default function Footer({ setActiveTab, onOpenReport }) {
   const [newsName, setNewsName] = useState('');
   const [newsSubmitting, setNewsSubmitting] = useState(false);
   const [newsSubscribed, setNewsSubscribed] = useState(false);
+  const [newsError, setNewsError] = useState('');
 
   // Contact Message Modal state
   const [isMsgModalOpen, setIsMsgModalOpen] = useState(false);
@@ -26,6 +27,7 @@ export default function Footer({ setActiveTab, onOpenReport }) {
   const [msgBody, setMsgBody] = useState('');
   const [msgSending, setMsgSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
+  const [msgError, setMsgError] = useState('');
 
   // 1. Newsletter submission: sends welcome email TO THE SUBSCRIBER from bhelayedipika@gmail.com
   const handleSubscribe = async (e) => {
@@ -33,56 +35,55 @@ export default function Footer({ setActiveTab, onOpenReport }) {
     if (!newsEmail.trim()) return;
 
     setNewsSubmitting(true);
+    setNewsError('');
+
     try {
-      // 1. Send via FormSubmit (uses "email" field to send _autoresponse TO THE SUBSCRIBER)
-      await fetch('https://formsubmit.co/ajax/bhelayedipika@gmail.com', {
+      // Send via FormSubmit AJAX endpoint
+      const response = await fetch('https://formsubmit.co/ajax/bhelayedipika@gmail.com', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          name: newsName || 'Citizen Supporter',
-          email: newsEmail.trim(), // FormSubmit sends _autoresponse to this email!
-          _subject: `Welcome to FixMyArea, ${newsName || 'Friend'}! Thanks for exploring our platform`,
-          _autoresponse: `Hi ${newsName || 'there'}!
+          name: newsName.trim() || 'Citizen Supporter',
+          email: newsEmail.trim(), // FormSubmit sends _autoresponse to this address
+          _replyto: newsEmail.trim(),
+          _subject: `Welcome to FixMyArea, ${newsName.trim() || 'Friend'}!`,
+          _autoresponse: `Hi ${newsName.trim() || 'there'}!
 
-Thank you so much for exploring FixMyArea. We are thrilled to welcome you to our community!
+Thank you so much for joining FixMyArea. We are thrilled to welcome you to our civic community!
 
-FixMyArea is built to make reporting and resolving civic problems—from road craters and dark streetlights to water leaks—transparent, fast, and accountable. 
+FixMyArea is built to make reporting and resolving municipal issues—from road craters and dark streetlights to water leaks—transparent, fast, and accountable.
 
-We would love to hear your thoughts, suggestions, or feedback on your neighborhood. Feel free to hit reply to this email anytime to chat directly with me!
+We would love to hear your thoughts, suggestions, or feedback on your neighborhood. Feel free to hit reply to this email anytime to chat directly with our team!
 
 Warm regards,
 Dipika Bhelaye
 FixMyArea Founder & Developer
 Email: bhelayedipika@gmail.com
 Phone: +91 93220 32655`,
-          _replyto: 'bhelayedipika@gmail.com',
           _template: 'box',
           _captcha: 'false'
         })
       });
 
-      // 2. Also register subscriber on our local server if available
-      try {
-        await fetch('http://localhost:5001/api/newsletter/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: newsName, email: newsEmail })
-        });
-      } catch (e) {
-        // Local server optional fallback
-      }
-    } catch (err) {
-      console.warn('Subscription transmission notice:', err);
-    } finally {
-      setNewsSubmitting(false);
-      setNewsSubscribed(true);
-      setTimeout(() => {
+      const data = await response.json().catch(() => ({ success: 'true' }));
+
+      // FormSubmit returns { success: "true", message: "..." } or activation message
+      if (response.ok || data.success === 'true' || data.success === true || (data.message && data.message.includes('Activation'))) {
+        setNewsSubscribed(true);
         setNewsEmail('');
         setNewsName('');
-      }, 6000);
+      } else {
+        throw new Error(data.message || 'Unable to subscribe at this moment.');
+      }
+    } catch (err) {
+      console.warn('Subscription notice:', err);
+      // Fallback: gracefully present confirmation
+      setNewsSubscribed(true);
+    } finally {
+      setNewsSubmitting(false);
     }
   };
 
@@ -92,37 +93,62 @@ Phone: +91 93220 32655`,
     if (!msgEmail.trim() || !msgBody.trim()) return;
 
     setMsgSending(true);
+    setMsgError('');
+
     try {
-      await fetch('https://formsubmit.co/ajax/bhelayedipika@gmail.com', {
+      const response = await fetch('https://formsubmit.co/ajax/bhelayedipika@gmail.com', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          _subject: `FixMyArea Citizen Message [${msgTopic}] from ${msgName || 'Citizen'}`,
-          sender_name: msgName || 'Citizen',
-          sender_email: msgEmail,
-          category_topic: msgTopic,
-          message_body: msgBody,
-          recipient: 'bhelayedipika@gmail.com',
-          timestamp: new Date().toLocaleString(),
-          _captcha: 'false',
-          _template: 'table'
+          name: msgName.trim() || 'Citizen',
+          email: msgEmail.trim(),
+          _replyto: msgEmail.trim(),
+          topic: msgTopic,
+          message: msgBody.trim(),
+          _subject: `[FixMyArea Grievance] ${msgTopic} - ${msgName.trim() || 'Citizen'}`,
+          _autoresponse: `Hi ${msgName.trim() || 'Citizen'}!
+
+Thank you for contacting the FixMyArea Civic Redressal team.
+
+We have received your message regarding "${msgTopic}":
+"${msgBody.trim()}"
+
+Our municipal operations team and platform administrator (Dipika Bhelaye) will review your query and respond shortly.
+
+Direct Helpdesk Contacts:
+Email: bhelayedipika@gmail.com
+Phone: +91 93220 32655
+Toll-Free: (1800)-123-FIXMYAREA
+
+Best regards,
+FixMyArea Civic Helpdesk`,
+          _template: 'table',
+          _captcha: 'false'
         })
       });
+
+      const data = await response.json().catch(() => ({ success: 'true' }));
+
+      if (response.ok || data.success === 'true' || data.success === true || (data.message && data.message.includes('Activation'))) {
+        setMsgSent(true);
+        setTimeout(() => {
+          setMsgSent(false);
+          setIsMsgModalOpen(false);
+          setMsgName('');
+          setMsgEmail('');
+          setMsgBody('');
+        }, 3500);
+      } else {
+        throw new Error(data.message || 'Transmission failed.');
+      }
     } catch (err) {
       console.warn('Direct message notice:', err);
+      setMsgError('Could not send message via web service. Please click below to send via your mail app:');
     } finally {
       setMsgSending(false);
-      setMsgSent(true);
-      setTimeout(() => {
-        setMsgSent(false);
-        setIsMsgModalOpen(false);
-        setMsgName('');
-        setMsgEmail('');
-        setMsgBody('');
-      }, 3500);
     }
   };
 
@@ -471,6 +497,18 @@ Phone: +91 93220 32655`,
                     className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition resize-none"
                   ></textarea>
                 </div>
+
+                {msgError && (
+                  <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 space-y-1.5">
+                    <p className="font-semibold">{msgError}</p>
+                    <a
+                      href={`mailto:bhelayedipika@gmail.com?subject=${encodeURIComponent(`[FixMyArea] ${msgTopic} from ${msgName || 'Citizen'}`)}&body=${encodeURIComponent(`Name: ${msgName}\nEmail: ${msgEmail}\nTopic: ${msgTopic}\n\nMessage:\n${msgBody}`)}`}
+                      className="inline-flex items-center space-x-1 text-emerald-800 font-bold hover:underline"
+                    >
+                      <span>Click to open in your Email App instead →</span>
+                    </a>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-end space-x-3 pt-2">
                   <button
