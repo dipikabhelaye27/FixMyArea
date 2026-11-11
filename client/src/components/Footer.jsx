@@ -32,13 +32,15 @@ export default function Footer({ setActiveTab, onOpenReport }) {
   // 1. Newsletter submission: sends welcome email TO THE SUBSCRIBER from bhelayedipika@gmail.com
   const handleSubscribe = async (e) => {
     e.preventDefault();
-    if (!newsEmail.trim()) return;
+    const cleanEmail = newsEmail.trim();
+    const cleanName = newsName.trim();
+    if (!cleanEmail) return;
 
     setNewsSubmitting(true);
     setNewsError('');
 
     try {
-      // Send via FormSubmit AJAX endpoint
+      // Send via FormSubmit AJAX endpoint with _cc to subscriber
       const response = await fetch('https://formsubmit.co/ajax/bhelayedipika@gmail.com', {
         method: 'POST',
         headers: {
@@ -46,23 +48,17 @@ export default function Footer({ setActiveTab, onOpenReport }) {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          name: newsName.trim() || 'Citizen Supporter',
-          email: newsEmail.trim(), // FormSubmit sends _autoresponse to this address
-          _replyto: newsEmail.trim(),
-          _subject: `Welcome to FixMyArea, ${newsName.trim() || 'Friend'}!`,
-          _autoresponse: `Hi ${newsName.trim() || 'there'}!
-
-Thank you so much for joining FixMyArea. We are thrilled to welcome you to our civic community!
-
-FixMyArea is built to make reporting and resolving municipal issues—from road craters and dark streetlights to water leaks—transparent, fast, and accountable.
-
-We would love to hear your thoughts, suggestions, or feedback on your neighborhood. Feel free to hit reply to this email anytime to chat directly with our team!
-
-Warm regards,
-Dipika Bhelaye
-FixMyArea Founder & Developer
-Email: bhelayedipika@gmail.com
-Phone: +91 93220 32655`,
+          "Subscriber Name": cleanName || 'Citizen Supporter',
+          "Subscriber Email": cleanEmail,
+          "Welcome to FixMyArea": `Hi ${cleanName || 'there'}! Thank you so much for joining the FixMyArea civic community. We are thrilled to welcome you!`,
+          "About Our Platform": "FixMyArea is built to make reporting and resolving municipal issues—from road craters and dark streetlights to water leaks—transparent, fast, and accountable.",
+          "How You Can Help": "Explore your neighborhood on our Live Civic Map, report civic problems with 1 click, or share feedback on municipal services in your ward.",
+          "Founder & Developer": "Dipika Bhelaye",
+          "Founder Direct Contacts": "Email: bhelayedipika@gmail.com | Phone: +91 93220 32655 | Toll-Free: (1800)-123-FIXMYAREA",
+          "Live Portal": "https://fixmyarea-mauve.vercel.app/",
+          _subject: `Welcome to FixMyArea, ${cleanName || 'Friend'}! Thanks for joining our community`,
+          _cc: cleanEmail, // CC the subscriber so they receive the welcome email in their inbox!
+          _replyto: 'bhelayedipika@gmail.com',
           _template: 'box',
           _captcha: 'false'
         })
@@ -70,7 +66,6 @@ Phone: +91 93220 32655`,
 
       const data = await response.json().catch(() => ({ success: 'true' }));
 
-      // FormSubmit returns { success: "true", message: "..." } or activation message
       if (response.ok || data.success === 'true' || data.success === true || (data.message && data.message.includes('Activation'))) {
         setNewsSubscribed(true);
         setNewsEmail('');
@@ -80,7 +75,6 @@ Phone: +91 93220 32655`,
       }
     } catch (err) {
       console.warn('Subscription notice:', err);
-      // Fallback: gracefully present confirmation
       setNewsSubscribed(true);
     } finally {
       setNewsSubmitting(false);
@@ -90,7 +84,10 @@ Phone: +91 93220 32655`,
   // 2. Direct message submission handler to bhelayedipika@gmail.com
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!msgEmail.trim() || !msgBody.trim()) return;
+    const cleanEmail = msgEmail.trim();
+    const cleanName = msgName.trim();
+    const cleanBody = msgBody.trim();
+    if (!cleanEmail || !cleanBody) return;
 
     setMsgSending(true);
     setMsgError('');
@@ -103,28 +100,15 @@ Phone: +91 93220 32655`,
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          name: msgName.trim() || 'Citizen',
-          email: msgEmail.trim(),
-          _replyto: msgEmail.trim(),
-          topic: msgTopic,
-          message: msgBody.trim(),
-          _subject: `[FixMyArea Grievance] ${msgTopic} - ${msgName.trim() || 'Citizen'}`,
-          _autoresponse: `Hi ${msgName.trim() || 'Citizen'}!
-
-Thank you for contacting the FixMyArea Civic Redressal team.
-
-We have received your message regarding "${msgTopic}":
-"${msgBody.trim()}"
-
-Our municipal operations team and platform administrator (Dipika Bhelaye) will review your query and respond shortly.
-
-Direct Helpdesk Contacts:
-Email: bhelayedipika@gmail.com
-Phone: +91 93220 32655
-Toll-Free: (1800)-123-FIXMYAREA
-
-Best regards,
-FixMyArea Civic Helpdesk`,
+          "Citizen Name": cleanName || 'Citizen',
+          "Citizen Email": cleanEmail,
+          "Inquiry Topic": msgTopic,
+          "Message Content": cleanBody,
+          "Platform Status": "FixMyArea Municipal Grievance Desk Ticket Registered",
+          "Helpdesk Contacts": "bhelayedipika@gmail.com | +91 93220 32655 | (1800)-123-FIXMYAREA",
+          _subject: `[FixMyArea Grievance/Inquiry] ${msgTopic} - ${cleanName || 'Citizen'}`,
+          _cc: cleanEmail, // CC the citizen so they receive an official copy of their message!
+          _replyto: cleanEmail,
           _template: 'table',
           _captcha: 'false'
         })
