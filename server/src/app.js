@@ -25,6 +25,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
 // Static Asset Serving
+const { uploadDir } = require('./config/cloudinary');
+if (uploadDir) {
+  app.use('/uploads', express.static(uploadDir));
+}
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/issues', express.static(path.join(__dirname, '../../client/public/issues')));
 

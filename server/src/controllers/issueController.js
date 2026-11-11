@@ -1,5 +1,5 @@
 const Issue = require('../models/Issue');
-const { uploadToCloudinaryOrLocal } = require('../config/cloudinary');
+const { uploadToCloudinaryOrLocal, uploadDir } = require('../config/cloudinary');
 const { analyzeCivicIssueImage, verifyResolutionProof } = require('../services/aiService');
 const { findNearbyDuplicates, linkReportToMaster, resolveJurisdiction } = require('../services/geoService');
 const { calculatePriorityScore, calculateSlaDeadline } = require('../services/priorityService');
@@ -468,8 +468,15 @@ const resolveIssueWithProof = async (req, res) => {
     // AI Auditing: Compare Before Photo with After Photo
     // Note: If before image is a local upload path, resolve path
     let localBeforePath = null;
-    if (issue.imageUrl.startsWith('/uploads/')) {
-      localBeforePath = path.join(__dirname, '../../', issue.imageUrl);
+    if (issue.imageUrl && issue.imageUrl.startsWith('/uploads/')) {
+      const fileName = path.basename(issue.imageUrl);
+      const tempPath = path.join(uploadDir, fileName);
+      const repoPath = path.join(__dirname, '../../uploads', fileName);
+      if (fs.existsSync(tempPath)) {
+        localBeforePath = tempPath;
+      } else if (fs.existsSync(repoPath)) {
+        localBeforePath = repoPath;
+      }
     }
 
     const aiAudit = await verifyResolutionProof(

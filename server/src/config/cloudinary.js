@@ -2,20 +2,38 @@ const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
-// Ensure local uploads directory exists for fallback
-const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Determine writable directory for uploads.
+// On Vercel Serverless / AWS Lambda, the deployment directory (/var/task) is strictly read-only (EROFS).
+// os.tmpdir() (/tmp) is the sanctioned writable temporary directory.
+let uploadDir;
+try {
+  const localDir = path.join(__dirname, '../../uploads');
+  if (!fs.existsSync(localDir)) {
+    fs.mkdirSync(localDir, { recursive: true });
+  }
+  // Verify write permission; will throw EROFS in read-only container
+  fs.accessSync(localDir, fs.constants.W_OK);
+  uploadDir = localDir;
+} catch (e) {
+  uploadDir = path.join(os.tmpdir(), 'fixmyarea_uploads');
+  if (!fs.existsSync(uploadDir)) {
+    try {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    } catch (mkdirErr) {
+      uploadDir = os.tmpdir();
+    }
+  }
 }
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'pw1sfe2t',
   api_key: process.env.CLOUDINARY_API_KEY || '844318645731772',
-  api_secret: process.env.CLOUDINARY_API_SECRET || 'WlsbZkX_vQ1G5207-Yg46yJkPz4'
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'z2uUe56vHU7Ap0XDiN422nI3VGY'
 });
 
-// Configure Multer storage to disk first so we have the file buffer/path
+// Configure Multer storage to safely use the writable uploadDir
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -32,7 +50,7 @@ const upload = multer({
 });
 
 /**
- * Uploads a file to Cloudinary with automatic fallback to local disk serving
+ * Uploads a file to Cloudinary with automatic fallback to local serving
  * @param {string} filePath - Absolute path to uploaded local file
  * @returns {Promise<string>} - Public accessible image URL
  */
@@ -47,7 +65,7 @@ const uploadToCloudinaryOrLocal = async (filePath) => {
     try { fs.unlinkSync(filePath); } catch (e) {}
     return result.secure_url;
   } catch (cloudErr) {
-    console.warn('⚠️ Cloudinary upload failed (using high-speed local fallback):', cloudErr.message);
+    console.warn('⚠️ Cloudinary upload warning (using fallback):', cloudErr.message);
     const fileName = path.basename(filePath);
     return `/uploads/${fileName}`;
   }
@@ -56,6 +74,7 @@ const uploadToCloudinaryOrLocal = async (filePath) => {
 module.exports = {
   upload,
   uploadToCloudinaryOrLocal,
-  cloudinary
+  cloudinary,
+  uploadDir
 };
 
